@@ -195,7 +195,7 @@ footer a{color:var(--rojo)}
     </div>
     <div class="cta-zone">
       <span class="btn" onclick="empezar()">Bautizadme</span>
-      <p class="mini">8 preguntas. Sin registros. Sin cookies. Y tendrás el nombre de tu banda.</p>
+      <p class="mini">9 preguntas. Sin registros. Sin cookies. Y tendrás el nombre de tu banda.</p>
     </div>
   </section>
 
@@ -272,6 +272,33 @@ const DB = [{"n":"Carnicero Sensible","t":["absurdo","muerte"],"i":1},{"n":"Esmo
    distinta letra. Así rejugar no suena a disco rayado.
    Cada opción: w = pesos por tag, i = empuje de intensidad, a = familias estéticas */
 const RONDAS = [
+  /* SLOT 0 — longitud del nombre (filtro fino: opción = len 1/2/3+, 0 = da igual) */
+  [
+    { q: "Primera decisión: ¿cómo de largo queréis el nombre?", o: [
+      {t:"Una sola palabra", d:"Seco y rotundo. De estampar en la caja del bombo.", w:{}, len:1},
+      {t:"Dos palabras", d:"El clásico: sustantivo con apellido inesperado.", w:{}, len:2},
+      {t:"Tres o más", d:"Casi una frase. Que sude el técnico al presentaros.", w:{}, len:3},
+      {t:"Nos da igual", d:"Lo que mande la lista. Confianza ciega.", w:{}, len:0}
+    ]},
+    { q: "¿Cuánto nombre sois capaces de defender?", o: [
+      {t:"Una palabra y gracias", d:"Tatuable en unos nudillos.", w:{}, len:1},
+      {t:"Dos palabritas", d:"Cabe en la camiseta sin achicar la letra.", w:{}, len:2},
+      {t:"Un nombre-parrafada", d:"Si no te quedas sin aire al decirlo, no vale.", w:{}, len:3},
+      {t:"Sorprendedme", d:"La longitud es un constructo.", w:{}, len:0}
+    ]},
+    { q: "El cartel del bolo tiene un hueco. ¿Cuánto ocupáis?", o: [
+      {t:"Una palabra gorda", d:"Tipografía del 800. Se lee desde el bar de enfrente.", w:{}, len:1},
+      {t:"Dos palabras bien avenidas", d:"Como un dúo cómico: una la monta, la otra remata.", w:{}, len:2},
+      {t:"Toda la línea", d:"Y si hay que partirlo en dos renglones, se parte.", w:{}, len:3},
+      {t:"Que decida el destino", d:"Vosotros ponéis la banda; la lista, el tamaño.", w:{}, len:0}
+    ]},
+    { q: "¿Cómo os corearán vuestros fans?", o: [
+      {t:"¡U-NA! ¡PA-LA-BRA!", d:"Coreada hasta el infinito, como un mantra.", w:{}, len:1},
+      {t:"Nombre y apellido", d:"Dos palabras con eco de estadio.", w:{}, len:2},
+      {t:"El cántico completo", d:"Tres palabras o más: himno instantáneo.", w:{}, len:3},
+      {t:"Como les salga", d:"El pueblo decide. Nosotros acatamos.", w:{}, len:0}
+    ]}
+  ],
   /* SLOT 1 — el rollo musical */
   [
     { q: "¿Qué rollito me lleváis?", o: [
@@ -577,19 +604,33 @@ const ILUSTRADORES = [
   {h:"extremes_creations", url:"https://www.instagram.com/extremes_creations/", estilo:"Anime/kawaii, temática queer", vibes:"Soñador, colorido, queer-friendly", colores:"Verde, morado, azul", tags:["pop","spanglish","absurdo"], aes:"cute", dulce:1},
   {h:"kaatsart", url:"https://www.instagram.com/kaatsart/", estilo:"Dark fantasy / cover art", vibes:"Gótico, místico", colores:"Rojo, morado, negro, azul noche", tags:["muerte","fino","bicho"], aes:"gotico", oscuro:1},
   {h:"katxodemoko", url:"https://www.instagram.com/katxodemoko/", estilo:"Ilustración punk DIY", vibes:"Punk, DIY, contracultural", colores:"Blanco y negro", tags:["macarra","politico","guarro"], aes:"diy"},
+  {h:"rose.knight.ttt", url:"https://www.instagram.com/rose.knight.ttt/", estilo:"Blackwork neotribal / cybersigilism, bodysuits y lettering metal", vibes:"Ocultista, brutal, metal extremo", colores:"Negro absoluto, piel, rojo sangre", tags:["muerte","macarra"], aes:"tattoo", oscuro:1},
+  {h:"javiergpacheco", url:"https://www.instagram.com/javiergpacheco/", estilo:"Ilustración sci-fi/fantasía retro, acuarela + digital", vibes:"Cósmico, ochentero, místico-totémico", colores:"Púrpuras cósmicos, neones, dorados", tags:["pop","fino","bicho"], aes:"pop"},
   {h:"dumaker", url:"https://www.instagram.com/dumaker/", estilo:"Mixed media: ilustración expresiva, dioramas, 3D", vibes:"Contracultura, experimental, irreverente", colores:"Rojo, negro, rosa, gris", tags:["absurdo","macarra","muerte","pop","guarro"], aes:"freak"}
 ];
 
 /* ================= MOTOR ================= */
 const PESO_POS = [1.0, 0.6, 0.35]; // tag dominante pesa más
+
+/* Longitud efectiva del nombre: los artículos iniciales no cuentan
+   ("Los Hiperventilados" se siente como UNA palabra). Tope en 3. */
+const ARTICULOS = new Set(['el','la','los','las','un','una','mi']);
+function palabrasEfectivas(n){
+  const w = n.trim().split(/\s+/);
+  let i = 0; while(i < w.length-1 && ARTICULOS.has(w[i].toLowerCase())) i++;
+  return Math.min(w.length - i, 3);
+}
+DB.forEach(b => b.l = palabrasEfectivas(b.n));
+
 function puntuar(respuestas){
-  const vec = {}; let iTarget = 2, iVotos = [];
+  const vec = {}; let iTarget = 2, iVotos = [], lenPref = 0;
   for(const r of respuestas){
     for(const [tag,w] of Object.entries(r.w)) vec[tag] = (vec[tag]||0) + w;
     if(r.i) iVotos.push(r.i);
+    if(r.len !== undefined && r.len > 0) lenPref = r.len;
   }
   if(iVotos.length) iTarget = iVotos.reduce((a,b)=>a+b,0)/iVotos.length;
-  return {vec, iTarget};
+  return {vec, iTarget, lenPref};
 }
 /* Memoria de recomendados recientes (cicla el catálogo entre sesiones).
    Guardada en el navegador; si falla (modo incógnito, etc.) no pasa nada. */
@@ -599,20 +640,26 @@ function anotarLedger(n){ try{
   localStorage.setItem('bb_ledger', JSON.stringify(l));
 }catch(e){} }
 
-function rankear(vec, iTarget, excluir){
-  const out = [];
+function rankear(vec, iTarget, excluir, lenPref){
   const led = leerLedger();
-  for(const b of DB){
-    if(excluir.has(b.n)) continue;
-    if(iTarget < 1.5 && b.i === 3) continue; // protege a las madres
-    let s = 0;
-    b.t.forEach((tag,ix)=> s += (vec[tag]||0) * PESO_POS[ix]);
-    s -= Math.abs(b.i - iTarget) * 0.9;      // cercanía de intensidad
-    const pos = led.indexOf(b.n);            // castigo por recomendación reciente
-    if(pos >= 0) s -= (pos < 30 ? 2.4 : 1.2);
-    out.push({b, s});
-  }
-  return out;
+  const construir = (lenDuro) => {
+    const out = [];
+    for(const b of DB){
+      if(excluir.has(b.n)) continue;
+      if(iTarget < 1.5 && b.i === 3) continue; // protege a las madres
+      if(lenDuro && lenPref && b.l !== lenPref) continue; // filtro de longitud
+      let s = 0;
+      b.t.forEach((tag,ix)=> s += (vec[tag]||0) * PESO_POS[ix]);
+      s -= Math.abs(b.i - iTarget) * 0.9;      // cercanía de intensidad
+      if(!lenDuro && lenPref && b.l !== lenPref) s -= 1.6; // fallback: preferencia blanda
+      const pos = led.indexOf(b.n);            // castigo por recomendación reciente
+      if(pos >= 0) s -= (pos < 30 ? 2.4 : 1.2);
+      out.push({b, s});
+    }
+    return out;
+  };
+  const duro = construir(true);
+  return (duro.length >= 12) ? duro : construir(false); // si el pool se agota, se relaja
 }
 /* Muestreo softmax SIN reemplazo: TODO nombre no filtrado tiene probabilidad > 0
    de salir, los que mejor encajan salen mucho más. Nada de bucles de 5 nombres. */
@@ -660,7 +707,7 @@ function pintarPregunta(){
 function liturgia(){
   show('s-liturgia');
   perfil = puntuar(respuestas);
-  cola = rankear(perfil.vec, perfil.iTarget, vistos);
+  cola = rankear(perfil.vec, perfil.iTarget, vistos, perfil.lenPref);
   const slot = document.getElementById('slot');
   const lit = document.getElementById('liturgia');
   let n = 0, litN = 0;
