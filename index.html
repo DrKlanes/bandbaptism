@@ -272,30 +272,26 @@ const DB = [{"n":"Carnicero Sensible","t":["absurdo","muerte"],"i":1},{"n":"Esmo
    distinta letra. Así rejugar no suena a disco rayado.
    Cada opción: w = pesos por tag, i = empuje de intensidad, a = familias estéticas */
 const RONDAS = [
-  /* SLOT 0 — longitud del nombre (filtro fino: opción = len 1/2/3+, 0 = da igual) */
+  /* SLOT 0 — longitud del nombre (3 opciones: len 1 = una palabra, 2 = varias, 0 = da igual) */
   [
     { q: "Primera decisión: ¿cómo de largo queréis el nombre?", o: [
-      {t:"Una sola palabra", d:"Seco y rotundo. De estampar en la caja del bombo.", w:{}, len:1},
-      {t:"Dos palabras", d:"El clásico: sustantivo con apellido inesperado.", w:{}, len:2},
-      {t:"Tres o más", d:"Casi una frase. Que sude el técnico al presentaros.", w:{}, len:3},
-      {t:"Nos da igual", d:"Lo que mande la lista. Confianza ciega.", w:{}, len:0}
+      {t:"Una sola palabra", d:"Seco y rotundo. De estampar en la caja del bombo. (Un 'Los' delante no cuenta, ojo.)", w:{}, len:1},
+      {t:"Varias palabras", d:"Con recorrido: sustantivo, apellido inesperado, lo que haga falta.", w:{}, len:2},
+      {t:"Sorprendedme", d:"Sin preferencias. Lo que mande la lista.", w:{}, len:0}
     ]},
     { q: "¿Cuánto nombre sois capaces de defender?", o: [
-      {t:"Una palabra y gracias", d:"Tatuable en unos nudillos.", w:{}, len:1},
-      {t:"Dos palabritas", d:"Cabe en la camiseta sin achicar la letra.", w:{}, len:2},
-      {t:"Un nombre-parrafada", d:"Si no te quedas sin aire al decirlo, no vale.", w:{}, len:3},
+      {t:"Una palabra y gracias", d:"Tatuable en unos nudillos. (El artículo va gratis.)", w:{}, len:1},
+      {t:"Varias palabras", d:"Si no caben en la camiseta, se achica la letra.", w:{}, len:2},
       {t:"Sorprendedme", d:"La longitud es un constructo.", w:{}, len:0}
     ]},
     { q: "El cartel del bolo tiene un hueco. ¿Cuánto ocupáis?", o: [
-      {t:"Una palabra gorda", d:"Tipografía del 800. Se lee desde el bar de enfrente.", w:{}, len:1},
-      {t:"Dos palabras bien avenidas", d:"Como un dúo cómico: una la monta, la otra remata.", w:{}, len:2},
-      {t:"Toda la línea", d:"Y si hay que partirlo en dos renglones, se parte.", w:{}, len:3},
+      {t:"Una palabra gorda", d:"Tipografía del 800. Se lee desde el bar de enfrente. (Si lleva 'Los', también vale.)", w:{}, len:1},
+      {t:"Varias palabras", d:"Toda la línea. Y si hay que partirlo en dos renglones, se parte.", w:{}, len:2},
       {t:"Que decida el destino", d:"Vosotros ponéis la banda; la lista, el tamaño.", w:{}, len:0}
     ]},
     { q: "¿Cómo os corearán vuestros fans?", o: [
-      {t:"¡U-NA! ¡PA-LA-BRA!", d:"Coreada hasta el infinito, como un mantra.", w:{}, len:1},
-      {t:"Nombre y apellido", d:"Dos palabras con eco de estadio.", w:{}, len:2},
-      {t:"El cántico completo", d:"Tres palabras o más: himno instantáneo.", w:{}, len:3},
+      {t:"¡U-NA! ¡PA-LA-BRA!", d:"Coreada hasta el infinito, como un mantra. (El artículo no se corea.)", w:{}, len:1},
+      {t:"El cántico completo", d:"Varias palabras: himno instantáneo.", w:{}, len:2},
       {t:"Como les salga", d:"El pueblo decide. Nosotros acatamos.", w:{}, len:0}
     ]}
   ],
@@ -621,6 +617,7 @@ function palabrasEfectivas(n){
   return Math.min(w.length - i, 3);
 }
 DB.forEach(b => b.l = palabrasEfectivas(b.n));
+function lenOk(b, pref){ return pref === 1 ? b.l === 1 : b.l >= 2; } // 1 = una palabra, 2 = varias
 
 function puntuar(respuestas){
   const vec = {}; let iTarget = 2, iVotos = [], lenPref = 0;
@@ -647,11 +644,11 @@ function rankear(vec, iTarget, excluir, lenPref){
     for(const b of DB){
       if(excluir.has(b.n)) continue;
       if(iTarget < 1.5 && b.i === 3) continue; // protege a las madres
-      if(lenDuro && lenPref && b.l !== lenPref) continue; // filtro de longitud
+      if(lenDuro && lenPref && !lenOk(b, lenPref)) continue; // filtro de longitud
       let s = 0;
       b.t.forEach((tag,ix)=> s += (vec[tag]||0) * PESO_POS[ix]);
       s -= Math.abs(b.i - iTarget) * 0.9;      // cercanía de intensidad
-      if(!lenDuro && lenPref && b.l !== lenPref) s -= 1.6; // fallback: preferencia blanda
+      if(!lenDuro && lenPref && !lenOk(b, lenPref)) s -= 1.6; // fallback: preferencia blanda
       const pos = led.indexOf(b.n);            // castigo por recomendación reciente
       if(pos >= 0) s -= (pos < 30 ? 2.4 : 1.2);
       out.push({b, s});
